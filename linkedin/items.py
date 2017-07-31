@@ -23,3 +23,8 @@ class NameUrlItem(scrapy.Item):
 	name = Field()
 	url = Field()
 	orig_url = Field()
+
+class NameUrlItemFailed(scrapy.Item):
+	orig_url = Field()
+	code = Field()
+	type = Field()

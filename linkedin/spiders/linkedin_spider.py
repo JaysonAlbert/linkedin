@@ -4,6 +4,7 @@ from scrapy.contrib.linkextractors.sgml import SgmlLinkExtractor
 from scrapy.selector import HtmlXPathSelector
 from scrapy.http import Request, FormRequest
 from linkedin.items import *
+import time
 
 
 class LinkedinSpider(InitSpider):
@@ -17,23 +18,23 @@ class LinkedinSpider(InitSpider):
     allowed_domains = ["linkedin.com"]
 
     # Uncomment the following lines for full spidering
-    start_urls = ["http://www.linkedin.com/directory/people-%s-%d-%d-%d"
-                  % (alphanum, num_one, num_two, num_three)
-                    # for alphanum in "abcdefghijklmnopqrstuvwxyz"
-                    for alphanum in "c"
-                    for num_one in xrange(1,101)
-                    for num_two in xrange(1,101)
-                    for num_three in xrange(1,101)
-                  ]
+    # start_urls = ["http://www.linkedin.com/directory/people-%s-%d-%d-%d"
+    #               % (alphanum, num_one, num_two, num_three)
+    #                 for alphanum in "abcdefghijklmnopqrstuvwxyz"
+    #                 for num_one in xrange(1,11)
+    #                 for num_two in xrange(1,11)
+    #                 for num_three in xrange(1,11)
+    #               ]
 
     # Temporary start_urls for testing; remove and use the above start_urls in production
     # start_urls = ["http://www.linkedin.com/directory/people-a-23-23-2"]
+    start_urls = ["https://www.linkedin.com/in/rebecca-liu-93a12a28/"]
     login_page = 'https://www.linkedin.com/uas/login'
     # TODO: allow /in/name urls too?
-    rules = (
-        Rule(SgmlLinkExtractor(allow=('\/pub\/.+')),
-             callback='parse_item'),
-    )
+    # rules = (
+    #     Rule(SgmlLinkExtractor(allow=('\/pub\/.+')),
+    #          callback='parse_item'),
+    # )
 
     def init_request(self):
         return Request(url=self.login_page,callback=self.login)
@@ -48,15 +49,26 @@ class LinkedinSpider(InitSpider):
         return self.initialized()
 
     def parse(self, response):
-        urls = response.xpath('//ul[@class="column dual-column"]/li[@class="content"]/a/@href').extract()
-        if not urls:
-            yield  Request(url=response.url,dont_filter=True)
-        names = response.xpath('//ul[@class="column dual-column"]/li[@class="content"]/a/text()').extract()
-        item = NameUrlItem()
-        item['name'] = names
-        item['url'] = urls
-        item['orig_url'] = response.url
-        yield item
+        time.sleep(2.5)
+        from scrapy.shell import inspect_response
+        from scrapy.utils.response import open_in_browser
+        # open_in_browser(response)
+        inspect_response(response, self)
+        if response.status != 200:
+            item = NameUrlItemFailed()
+            item['orig_url'] = response.url
+            item['code'] = response.code
+            item['type'] = 'url-item'
+        else:
+            urls = response.xpath('//ul[@class="column dual-column"]/li[@class="content"]/a/@href').extract()
+            # if not urls:
+            #     yield  Request(url=response.url,dont_filter=True)
+            names = response.xpath('//ul[@class="column dual-column"]/li[@class="content"]/a/text()').extract()
+            item = NameUrlItem()
+            item['name'] = names
+            item['url'] = urls
+            item['orig_url'] = response.url
+            yield item
         # for name,url in zip(names,urls):
         #     item['name'] = name
         #     item['url'] = url

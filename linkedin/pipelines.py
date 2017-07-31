@@ -6,6 +6,7 @@
 # See: http://doc.scrapy.org/en/latest/topics/item-pipeline.html
 
 import pymongo
+from linkedin.items import *
 
 class MongoPipeline(object):
 
@@ -30,5 +31,8 @@ class MongoPipeline(object):
         self.client.close()
 
     def process_item(self, item, spider):
-        self.db[self.collection_name].insert(dict(item))
+        if isinstance(item,NameUrlItem):
+            self.db[self.collection_name].insert(dict(item))
+        elif isinstance(item,NameUrlItemFailed):
+            self.db[self.collection_name + '_failed'].insert(dict(item))
         return item
