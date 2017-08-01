@@ -5,6 +5,7 @@ from scrapy.selector import HtmlXPathSelector
 from scrapy.http import Request, FormRequest
 from linkedin.items import *
 import time
+import scrapy_splash
 
 
 class LinkedinSpider(InitSpider):
@@ -37,16 +38,31 @@ class LinkedinSpider(InitSpider):
     # )
 
     def init_request(self):
-        return Request(url=self.login_page,callback=self.login)
+        # return scrapy_splash.SplashFormRequest(self.login_page,formdata={
+        #     'session_key':'momeijw@gmail.com','session_password':'Love@Princess#13'
+        # },callback=self.check_login_response)
+        # return scrapy_splash.SplashRequest(url=self.login_page,callback=self.login,args={'wait': 0.5})
+        return scrapy.Request(url=self.login_page,callback=self.logon)
 
     def login(self,response):
-        return FormRequest.from_response(response,formdata={
+        return scrapy.FormRequest.from_response(response,formdata={
             'session_key':'momeijw@gmail.com','session_password':'Love@Princess#13'
         },
                                          callback = self.check_login_response)
+        # return scrapy_splash.SplashFormRequest.from_response(response,formdata={
+        #     'session_key':'momeijw@gmail.com','session_password':'Love@Princess#13'
+        # },
+        #                                  callback = self.check_login_response)
 
     def check_login_response(self,response):
+        from scrapy.utils.response import open_in_browser
+        open_in_browser(response)
         return self.initialized()
+
+    def start_requests(self):
+        for url in self.start_urls:
+            yield scrapy_splash.SplashRequest(url, self.parse, args={'wait': 0.5})
+
 
     def parse(self, response):
         time.sleep(2.5)
