@@ -6,7 +6,42 @@
 # http://doc.scrapy.org/en/latest/topics/spider-middleware.html
 
 from scrapy import signals
+import functools
+from selenium import webdriver
+from scrapy.http import HtmlResponse
+from scrapy import log
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
+def check_spider_middleware(method):
+    @functools.wraps(method)
+    def wrapper(self, request, spider):
+        msg = '%%s %s middleware step' % (self.__class__,)
+        spider.log(request.meta)
+        if self.__class__ in spider.middleware:
+            spider.log(msg % 'executing', level=log.DEBUG)
+            return method(self, request, spider)
+        else:
+            spider.log(msg % 'skipping', level=log.DEBUG)
+            return None
+
+    return wrapper
+
+class JsDownload(object):
+
+    @check_spider_middleware
+    def process_request(self, request, spider):
+        driver = spider.driver
+        driver.get(request.url)
+        # if 'wait' in request.meta:
+        #     try:
+        #         element = WebDriverWait(driver,5).until(
+        #             request.meta['wait']
+        #         )
+        #     except Exception,e:
+        #         spider.log(str(e) % "failed",level = log.WARNING)
+        return HtmlResponse(request.url, encoding='utf-8', body=driver.page_source.encode('utf-8'))
 
 class LinkedinSpiderMiddleware(object):
     # Not all methods need to be defined. If a method is not defined,

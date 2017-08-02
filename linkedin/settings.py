@@ -53,6 +53,7 @@ ROBOTSTXT_OBEY = False
 # Enable or disable downloader middlewares
 # See http://scrapy.readthedocs.org/en/latest/topics/downloader-middleware.html
 DOWNLOADER_MIDDLEWARES = {
+    'linkedin.middlewares.JsDownload': 500,
    'scrapy.downloadermiddlewares.useragent.UserAgentMiddleware': 543,
 }
 
