@@ -73,9 +73,11 @@ MONGO_URI = 'mongodb://localhost:27017'
 MONGO_DATABASE = 'linkedin'
 
 ITEM_PIPELINES = {
+    'scrapy.pipelines.images.ImagesPipeline': 1,
     'linkedin.pipelines.MongoPipeline':300,
                   }
 
+IMAGES_STORE = 'pv-photos'
 # MONGODB_SERVER = "localhost"
 # MONGODB_PORT = 27017
 # MONGODB_DB = "stackoverflow"

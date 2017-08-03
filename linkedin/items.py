@@ -28,3 +28,16 @@ class NameUrlItemFailed(scrapy.Item):
 	orig_url = Field()
 	code = Field()
 	type = Field()
+
+class ProfileItem(scrapy.Item):
+	url = Field()
+	name = Field()
+	career = Field()
+	company = Field()
+	location = Field()
+	connection = Field()
+	school = Field()
+	experience = Field()
+	education = Field()
+	image_urls = scrapy.Field()
+	images = scrapy.Field()
