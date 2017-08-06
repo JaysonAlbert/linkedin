@@ -18,8 +18,7 @@ def check_spider_middleware(method):
     @functools.wraps(method)
     def wrapper(self, request, spider):
         msg = '%%s %s middleware step' % (self.__class__,)
-        spider.log(request.meta)
-        if self.__class__ in spider.middleware:
+        if self.__class__ in spider.middleware and 'use_js' in request.meta:
             spider.log(msg % 'executing', level=log.DEBUG)
             return method(self, request, spider)
         else:
@@ -34,13 +33,6 @@ class JsDownload(object):
     def process_request(self, request, spider):
         driver = spider.driver
         driver.get(request.url)
-        # if 'wait' in request.meta:
-        #     try:
-        #         element = WebDriverWait(driver,5).until(
-        #             request.meta['wait']
-        #         )
-        #     except Exception,e:
-        #         spider.log(str(e) % "failed",level = log.WARNING)
         return HtmlResponse(request.url, encoding='utf-8', body=driver.page_source.encode('utf-8'))
 
 class LinkedinSpiderMiddleware(object):

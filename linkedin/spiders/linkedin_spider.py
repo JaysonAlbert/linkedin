@@ -12,6 +12,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from scrapy import log
+from scrapy.utils.spider import iterate_spider_output
 import numpy as np
 
 import time
@@ -78,10 +79,13 @@ class LinkedinSpider(InitSpider):
     def check_login_response(self,response):
         return self.initialized()
 
-    # def start_requests(self):
-    #     meta = {'wait':EC.presence_of_element_located((By.CLASS_NAME,"pv-top-card-section__name Sans-26px-black-85%"))}
-    #     for url in self.start_urls:
-    #         yield scrapy.Request(url = url, callback = self.parse, meta = meta)
+    def start_requests(self):
+        meta = {'use_js':'999'}
+        # for url in self.start_urls:
+        #     yield scrapy.Request(url = url, callback = self.parse, meta = meta)
+
+        self._postinit_reqs = [scrapy.Request(url = url, callback = self.parse, meta = meta) for url in self.start_urls]
+        return iterate_spider_output(self.init_request())
 
     def parse(self, response):
         # open_in_browser(response)
@@ -120,7 +124,7 @@ class LinkedinSpider(InitSpider):
         except Exception,e:
             pass
 
-        inspect_response(response, self)
+        # inspect_response(response, self)
         yield item
 
 
