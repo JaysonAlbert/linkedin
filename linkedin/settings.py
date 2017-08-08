@@ -70,7 +70,7 @@ DOWNLOADER_MIDDLEWARES = {
 #}
 
 MONGO_URI = 'mongodb://localhost:27017'
-MONGO_DATABASE = 'linkedin'
+MONGO_DATABASE = 'linkedin07'
 
 ITEM_PIPELINES = {
     'scrapy.pipelines.images.ImagesPipeline': 1,

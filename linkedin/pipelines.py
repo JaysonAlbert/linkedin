@@ -35,4 +35,6 @@ class MongoPipeline(object):
             self.db[self.collection_name].insert(dict(item))
         elif isinstance(item,NameUrlItemFailed):
             self.db[self.collection_name + '_failed'].insert(dict(item))
-        return item
+        elif isinstance(item,ProfileItem):
+            self.db['profiles'].insert(dict(item))
+        # return item

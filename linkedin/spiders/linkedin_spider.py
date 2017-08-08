@@ -14,6 +14,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from scrapy import log
 from scrapy.utils.spider import iterate_spider_output
 import numpy as np
+import pymongo
 
 import time
 
@@ -28,22 +29,24 @@ class LinkedinSpider(InitSpider):
     name = "linkedin"
     allowed_domains = ["linkedin.com"]
     middleware = set([linkedin.middlewares.JsDownload])
-    driver = webdriver.Chrome()
+    driver = webdriver.PhantomJS()
+
+    finished_url = []
 
     # Uncomment the following lines for full spidering
-    # start_urls = ["http://www.linkedin.com/directory/people-%s-%d-%d-%d"
-    #               % (alphanum, num_one, num_two, num_three)
-    #                 for alphanum in "abcdefghijklmnopqrstuvwxyz"
-    #                 for num_one in xrange(1,11)
-    #                 for num_two in xrange(1,11)
-    #                 for num_three in xrange(1,11)
-    #               ]
+    start_urls = ["http://www.linkedin.com/directory/people-%s-%d-%d-%d"
+                  % (alphanum, num_one, num_two, num_three)
+                    for alphanum in "abcdefghijklmnopqrstuvwxyz"
+                    for num_one in xrange(1,5)
+                    for num_two in xrange(1,5)
+                    for num_three in xrange(1,5)
+                  ]
 
     # Temporary start_urls for testing; remove and use the above start_urls in production
-    # start_urls = ["http://www.linkedin.com/directory/people-a-23-23-2"]
-    start_urls = ["https://www.linkedin.com/in/zhenworldwide/",
+    start_urls = ["http://www.linkedin.com/directory/people-a-23-23-2"]
+    # start_urls = ["https://www.linkedin.com/in/zhenworldwide/",
                   # "https://www.linkedin.com/in/linlin97/",
-                  ]
+                  # ]
     login_page = 'https://www.linkedin.com/uas/login'
     # TODO: allow /in/name urls too?
     # rules = (
@@ -70,11 +73,18 @@ class LinkedinSpider(InitSpider):
         return self.initialized()
         # return Request(url=self.login_page,callback=self.login)
 
-    def login(self,response):
-        return FormRequest.from_response(response,formdata={
-            'session_key':'momeijw@gmail.com','session_password':'Love@Princess#13'
-        },
-                                         callback = self.check_login_response)
+    # def login(self,response):
+    #     return FormRequest.from_response(response,formdata={
+    #         'session_key':'momeijw@gmail.com','session_password':'Love@Princess#13'
+    #     },
+    #                                      callback = self.check_login_response)
+
+    def fetch_finished_url(self):
+        mongo_uri = self.settings.get('MONGO_URI'),
+        mongo_db = self.settings.get('MONGO_DATABASE')
+        client = pymongo.MongoClient(mongo_uri)
+        collection = client[mongo_db]['scrapy_items']
+        self.finished_url = [document['orig_url'] for document in collection.find({}, {'orig_url': 1, '_id': 0})]
 
     def check_login_response(self,response):
         return self.initialized()
@@ -83,26 +93,38 @@ class LinkedinSpider(InitSpider):
         meta = {'use_js':'999'}
         # for url in self.start_urls:
         #     yield scrapy.Request(url = url, callback = self.parse, meta = meta)
-
-        self._postinit_reqs = [scrapy.Request(url = url, callback = self.parse, meta = meta) for url in self.start_urls]
+        self.fetch_finished_url()
+        self._postinit_reqs = [scrapy.Request(url = url, callback = self.parse, meta = meta) for url in self.start_urls if url not in self.finished_url]
         return iterate_spider_output(self.init_request())
 
     def parse(self, response):
-        # open_in_browser(response)
-        # inspect_response(response, self)
-        # if response.status != 200:
-        #     item = NameUrlItemFailed()
-        #     item['orig_url'] = response.url
-        #     item['code'] = response.code
-        #     item['type'] = 'url-item'
-        # else:
-        #     urls = response.xpath('//ul[@class="column dual-column"]/li[@class="content"]/a/@href').extract()
-        #     names = response.xpath('//ul[@class="column dual-column"]/li[@class="content"]/a/text()').extract()
-        #     item = NameUrlItem()
-        #     item['name'] = names
-        #     item['url'] = urls
-        #     item['orig_url'] = response.url
-        #     yield item
+        # inspect_response(response,self);
+        if response.status != 200:
+            item = NameUrlItemFailed()
+            item['orig_url'] = response.url
+            item['code'] = response.code
+            item['type'] = 'url-item'
+            yield item
+        else:
+            item = NameUrlItem()
+            item['url'] = response.xpath('//ul[@class="column dual-column"]/li[@class="content"]/a/@href').extract()
+            item['name'] = response.xpath('//ul[@class="column dual-column"]/li[@class="content"]/a/text()').extract()
+            item['orig_url'] = response.url
+            yield item
+
+            for url in item['url']:
+                if(url.startswith('/in')):
+                    yield scrapy.Request(url=response.urljoin(url),callback=self.parse_profile,meta = {'use_js':'999'})
+                elif (url.startswith('/pub')):
+                    yield scrapy.Request(url=response.urljoin(url),callback=self.process_subpages_url,meta = {'use_js':'999'})
+
+            # for name,url in zip(names,urls):
+            #     item['name'] = name
+            #     item['url'] = url
+            #     item['orig_url'] = response.url
+            #     yield item
+
+    def parse_profile(self,response):
 
         item = ProfileItem()
         item['url'] = response.url
@@ -126,15 +148,6 @@ class LinkedinSpider(InitSpider):
 
         # inspect_response(response, self)
         yield item
-
-
-
-
-        # for name,url in zip(names,urls):
-        #     item['name'] = name
-        #     item['url'] = url
-        #     item['orig_url'] = response.url
-        #     yield item
 
     def process_experience(self,response):
         rt = []
@@ -187,6 +200,10 @@ class LinkedinSpider(InitSpider):
 
         return rt
 
+    def process_subpages_url(self,response):
+        urls = response.xpath('//ul[@class="results-list ember-view"]/li/div/div/div/a/@href').extract()
+        for url in urls:
+            yield scrapy.Request(url=response.urljoin(url), callback=self.parse_profile, meta={'use_js': '999'})
 
 
 
